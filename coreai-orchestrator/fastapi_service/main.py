@@ -3,7 +3,7 @@ from .services import AIService  # Importamos nuestra lógica
 from .auth import get_current_user
 
 app = FastAPI(title="CoreAI Processor")
-
+#data
 @app.post("/process-ai/")
 async def process_ai(
     input_text: str, 
