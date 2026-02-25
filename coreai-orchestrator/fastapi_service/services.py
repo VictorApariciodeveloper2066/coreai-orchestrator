@@ -1,32 +1,31 @@
-import time
 import httpx
-import os
+import logging
+from typing import Dict, Any
+
+logger = logging.getLogger(__name__)
 
 class AIService:
-    """
-    Clase encargada ÚNICAMENTE de la lógica de procesamiento de IA 
-    y la comunicación con el núcleo de Django.
-    """
-
+    # REEMPLAZO: Separamos las responsabilidades en métodos pequeños (< 10 líneas)
+    
     @staticmethod
     async def process_text_task(text: str) -> str:
-        # Aquí iría la llamada real a OpenAI / HuggingFace
-        # Por ahora, simulamos procesamiento
-        time.sleep(0.5) 
-        return f"AI Analysis Result: {text[::-1].upper()}"
+        """Simula el procesamiento de IA."""
+        # En el futuro, aquí llamarás a un modelo real (OpenAI, Llama3, etc.)
+        return f"Processed: {text.upper()}"
 
     @staticmethod
-    async def report_to_django(payload: dict, token: str):
+    async def report_to_django(report_data: Dict[str, Any], token: str) -> bool:
         """
-        Responsabilidad única: Notificar a Django sobre la tarea realizada.
+        Envía el resultado a Django para persistencia.
+        Responsabilidad única: Comunicación externa.
         """
-        django_url = os.getenv("DJANGO_API_URL", "http://web_django:8000/api/ai-queries/")
+        django_url = "http://web_django:8000/api/save-report/" # Moveremos esto a .env luego
         headers = {"Authorization": f"Bearer {token}"}
         
-        async with httpx.AsyncClient() as client:
-            try:
-                response = await client.post(django_url, json=payload, headers=headers)
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(django_url, json=report_data, headers=headers, timeout=5.0)
                 return response.status_code == 201
-            except Exception as e:
-                print(f"Error reporting to Django: {e}")
-                return False
+        except Exception as e:
+            logger.error(f"Failed to reach Django: {e}")
+            return False
