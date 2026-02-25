@@ -1,45 +1,53 @@
 import requests
 import logging
-from typing import Dict, Any, Union
-from decouple import config  # Librería estándar para manejar .env
+from dataclasses import dataclass
+from typing import Dict, Any, Optional
+from decouple import config
 from .ai_interface import AIProcessorInterface
 
-# Configuración de Logging profesional (Regla de Oro: No print)
-logger = logging.getLogger(__name__)
+# 1. AGREGAR esto al inicio (Tu nuevo modelo de datos)
+@dataclass(frozen=True)
+class AIInferenceResult:
+    user_id: int
+    result: str
+    persisted: bool
+    status: str = "completed"
+    error_detail: Optional[str] = None
 
+# 2. SUSTITUIR tu clase vieja por esta versión mejorada
 class FastAPIProcessor(AIProcessorInterface):
-    """
-    Service responsible for communicating with the FastAPI AI Processor.
-    Implements AIProcessorInterface to maintain decoupling.
-    """
-
     def __init__(self) -> None:
-        # Extraemos la URL del .env. Si no existe, lanzamos error en tiempo de inicio.
+        # Ahora usamos config() en lugar de texto plano
         self.url: str = config('AI_PROCESSOR_URL', default="http://ai_processor:8080/analyze")
+        self.timeout: int = config('AI_TIMEOUT', default=5, cast=int)
 
-    def process(self, text: str) -> Dict[str, Any]:
+    def process(self, text: str) -> AIInferenceResult:
         """
-        Sends text to the AI Processor and returns a structured dictionary.
-        
-        :param text: Raw text to be analyzed.
-        :return: Dictionary with results or error key.
+        Observa que el Type Hint ahora dice que devolvemos 
+        un objeto AIInferenceResult, no un dict.
         """
-        payload: Dict[str, str] = {"text": text}
-        
         try:
-            # Añadimos timeout explícito para evitar colgar el worker de Django
             response = requests.post(
                 self.url, 
-                json=payload, 
-                timeout=config('AI_TIMEOUT', default=5, cast=int)
+                json={"text": text}, 
+                timeout=self.timeout
             )
             response.raise_for_status()
-            
-            # Type Hinting: Nos aseguramos de que lo que retorna es un dict
-            result: Dict[str, Any] = response.json()
-            return result
+            data = response.json()
 
-        except requests.exceptions.RequestException as e:
-            # Logging profesional con contexto
-            logger.error(f"Error communicating with AI Processor at {self.url}: {str(e)}")
-            return {"error": "AI_SERVICE_UNAVAILABLE", "details": str(e)}
+            # Mapeamos el JSON a la DataClass
+            return AIInferenceResult(
+                user_id=data.get("user_id", 0),
+                result=data.get("result", ""),
+                persisted=data.get("persisted", False)
+            )
+
+        except Exception as e:
+            # En lugar de devolver un dict con error, devolvemos el objeto con status "error"
+            return AIInferenceResult(
+                user_id=0,
+                result="",
+                persisted=False,
+                status="error",
+                error_detail=str(e)
+            )
