@@ -3,7 +3,7 @@ import logging
 from dataclasses import dataclass
 from typing import Dict, Any, Optional
 from decouple import config
-from .ai_interface import AIProcessorInterface
+from .interfaces import AIProcessorInterface
 
 # 1. AGREGAR esto al inicio (Tu nuevo modelo de datos)
 @dataclass(frozen=True)
