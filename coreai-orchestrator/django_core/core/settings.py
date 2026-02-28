@@ -37,6 +37,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
+    # Tus apps locales
+    'api',  # <--- ESTA LÍNEA ES VITAL
 ]
 
 MIDDLEWARE = [
